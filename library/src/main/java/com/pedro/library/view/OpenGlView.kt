@@ -18,37 +18,29 @@ package com.pedro.library.view
 import android.content.Context
 import android.graphics.Point
 import android.graphics.SurfaceTexture
-import android.graphics.SurfaceTexture.OnFrameAvailableListener
 import android.os.Build
 import android.util.AttributeSet
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.annotation.RequiresApi
-import com.pedro.common.newSingleThreadExecutor
-import com.pedro.common.secureSubmit
-import com.pedro.encoder.input.gl.FilterAction
-import com.pedro.encoder.input.gl.SurfaceManager
-import com.pedro.encoder.input.gl.render.MainRender
 import com.pedro.encoder.input.gl.render.filters.BaseFilterRender
 import com.pedro.encoder.input.gl.render.filters.NoFilterRender
-import com.pedro.encoder.input.video.FpsLimiter
-import com.pedro.encoder.utils.gl.AspectRatioMode
-import com.pedro.encoder.utils.gl.AspectRatioMode.Companion.fromId
 import com.pedro.encoder.utils.gl.GlUtil
-import com.pedro.library.R
-import com.pedro.library.util.Filter
+import com.pedro.library.filter.Filter
+import com.pedro.library.filter.FilterAction
+import com.pedro.library.render.MainRender
+import com.pedro.library.view.opengl.*
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import com.pedro.library.util.*
 
-/**
- * Created by pedro on 10/03/18.
- */
 @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, SurfaceHolder.Callback {
-    // NEW: scale factors
+open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailableListener, SurfaceHolder.Callback {
+
+    // Scale factors
     private var customScaleX = 1f
     private var customScaleY = 1f
 
@@ -96,7 +88,6 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
         holder.addCallback(this)
     }
 
-    // ✅ NEW FUNCTION to apply custom scaling
     fun setScale(scaleX: Float, scaleY: Float) {
         this.customScaleX = scaleX
         this.customScaleY = scaleY
@@ -104,6 +95,7 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
 
     override fun getSurfaceTexture(): SurfaceTexture = mainRender.getSurfaceTexture()
     override fun getSurface(): Surface = mainRender.getSurface()
+
     override fun setFilter(filterPosition: Int, baseFilterRender: BaseFilterRender) {
         filterQueue.add(Filter(FilterAction.SET_INDEX, filterPosition, baseFilterRender))
     }
@@ -129,6 +121,7 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
     }
 
     override fun filtersCount(): Int = mainRender.filtersCount()
+
     override fun setFilter(baseFilterRender: BaseFilterRender) {
         filterQueue.add(Filter(FilterAction.SET, 0, baseFilterRender))
     }
@@ -178,6 +171,7 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
     }
 
     override fun isVideoMuted() = muteVideo
+
     override fun setForceRender(enabled: Boolean, fps: Int) {
         forceRenderer.setEnabled(enabled, fps)
     }
@@ -231,11 +225,10 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
             mainRender.drawSource()
             if (!limitFps) {
                 mainRender.drawFilters(true)
-                // ✅ Apply custom scale
                 mainRender.drawScreen(
                     previewWidth, previewHeight, aspectRatioMode, 0,
                     isPreviewVerticalFlip, isPreviewHorizontalFlip,
-                    floatArrayOf(customScaleX, customScaleY)
+                    ViewPort(customScaleX, customScaleY)
                 )
             }
             surfaceManager.swapBuffer()
@@ -252,7 +245,7 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
                 mainRender.drawScreen(
                     w, h, aspectRatioMode, streamRotation,
                     isStreamVerticalFlip, isStreamHorizontalFlip,
-                    floatArrayOf(customScaleX, customScaleY)
+                    ViewPort(customScaleX, customScaleY)
                 )
                 surfaceManagerEncoder.swapBuffer()
             }
@@ -265,7 +258,7 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
                 mainRender.drawScreen(
                     w, h, aspectRatioMode, streamRotation,
                     isStreamVerticalFlip, isStreamHorizontalFlip,
-                    floatArrayOf(customScaleX, customScaleY)
+                    ViewPort(customScaleX, customScaleY)
                 )
                 surfaceManagerEncoderRecord.swapBuffer()
             }
@@ -276,7 +269,7 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
                 mainRender.drawScreen(
                     encoderWidth, encoderHeight, aspectRatioMode, streamRotation,
                     isStreamVerticalFlip, isStreamHorizontalFlip,
-                    floatArrayOf(customScaleX, customScaleY)
+                    ViewPort(customScaleX, customScaleY)
                 )
                 takePhotoCallback?.onTakePhoto(GlUtil.getBitmap(encoderWidth, encoderHeight))
                 takePhotoCallback = null
@@ -370,4 +363,3 @@ open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, Surf
         stop()
     }
 }
-
