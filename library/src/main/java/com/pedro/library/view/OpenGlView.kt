@@ -18,24 +18,32 @@ package com.pedro.library.view
 import android.content.Context
 import android.graphics.Point
 import android.graphics.SurfaceTexture
+import android.graphics.SurfaceTexture.OnFrameAvailableListener
 import android.os.Build
 import android.util.AttributeSet
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.annotation.RequiresApi
+import com.pedro.common.newSingleThreadExecutor
+import com.pedro.common.secureSubmit
+import com.pedro.encoder.input.gl.FilterAction
+import com.pedro.encoder.input.gl.SurfaceManager
+import com.pedro.encoder.input.gl.render.MainRender
 import com.pedro.encoder.input.gl.render.filters.BaseFilterRender
 import com.pedro.encoder.input.gl.render.filters.NoFilterRender
+import com.pedro.encoder.input.video.FpsLimiter
+import com.pedro.encoder.utils.gl.AspectRatioMode
+import com.pedro.encoder.utils.gl.AspectRatioMode.Companion.fromId
 import com.pedro.encoder.utils.gl.GlUtil
-import com.pedro.library.filter.Filter
-import com.pedro.library.filter.FilterAction
-import com.pedro.library.render.MainRender
-import com.pedro.library.view.opengl.*
+import com.pedro.library.R
+import com.pedro.library.util.Filter
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
-import com.pedro.library.util.*
+import com.pedro.library.view.ViewPort
+
 
 @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
 open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailableListener, SurfaceHolder.Callback {
