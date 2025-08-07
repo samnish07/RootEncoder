@@ -42,16 +42,12 @@ import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
-import com.pedro.library.view.ViewPort
 
-
+/**
+ * Created by pedro on 10/03/18.
+ */
 @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN_MR2)
-open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailableListener, SurfaceHolder.Callback {
-
-    // Scale factors
-    private var customScaleX = 1f
-    private var customScaleY = 1f
-
+open class OpenGlView : SurfaceView, GlInterface, OnFrameAvailableListener, SurfaceHolder.Callback {
     private val running = AtomicBoolean(false)
     private val mainRender = MainRender()
     private val surfaceManagerPhoto = SurfaceManager()
@@ -96,13 +92,13 @@ open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailabl
         holder.addCallback(this)
     }
 
-    fun setScale(scaleX: Float, scaleY: Float) {
-        this.customScaleX = scaleX
-        this.customScaleY = scaleY
+    override fun getSurfaceTexture(): SurfaceTexture {
+        return mainRender.getSurfaceTexture()
     }
 
-    override fun getSurfaceTexture(): SurfaceTexture = mainRender.getSurfaceTexture()
-    override fun getSurface(): Surface = mainRender.getSurface()
+    override fun getSurface(): Surface {
+        return mainRender.getSurface()
+    }
 
     override fun setFilter(filterPosition: Int, baseFilterRender: BaseFilterRender) {
         filterQueue.add(Filter(FilterAction.SET_INDEX, filterPosition, baseFilterRender))
@@ -128,7 +124,9 @@ open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailabl
         filterQueue.add(Filter(FilterAction.REMOVE, 0, baseFilterRender))
     }
 
-    override fun filtersCount(): Int = mainRender.filtersCount()
+    override fun filtersCount(): Int {
+        return mainRender.filtersCount()
+    }
 
     override fun setFilter(baseFilterRender: BaseFilterRender) {
         filterQueue.add(Filter(FilterAction.SET, 0, baseFilterRender))
@@ -235,8 +233,7 @@ open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailabl
                 mainRender.drawFilters(true)
                 mainRender.drawScreen(
                     previewWidth, previewHeight, aspectRatioMode, 0,
-                    isPreviewVerticalFlip, isPreviewHorizontalFlip,
-                    ViewPort(customScaleX, customScaleY)
+                    isPreviewVerticalFlip, isPreviewHorizontalFlip, null
                 )
             }
             surfaceManager.swapBuffer()
@@ -245,40 +242,29 @@ open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailabl
         if (surfaceManagerEncoder.isReady || surfaceManagerEncoderRecord.isReady || surfaceManagerPhoto.isReady) {
             mainRender.drawFilters(false)
         }
-
         if (surfaceManagerEncoder.isReady && mainRender.isReady() && !limitFps) {
             val w = if (muteVideo) 0 else encoderWidth
             val h = if (muteVideo) 0 else encoderHeight
             if (surfaceManagerEncoder.makeCurrent()) {
                 mainRender.drawScreen(
-                    w, h, aspectRatioMode, streamRotation,
-                    isStreamVerticalFlip, isStreamHorizontalFlip,
-                    ViewPort(customScaleX, customScaleY)
+                    w, h, aspectRatioMode,
+                    streamRotation, isStreamVerticalFlip, isStreamHorizontalFlip, null
                 )
                 surfaceManagerEncoder.swapBuffer()
             }
         }
-
+        // render VideoEncoder (record if the resolution is different than stream)
         if (surfaceManagerEncoderRecord.isReady && mainRender.isReady() && !limitFps) {
             val w = if (muteVideo) 0 else encoderRecordWidth
             val h = if (muteVideo) 0 else encoderRecordHeight
             if (surfaceManagerEncoderRecord.makeCurrent()) {
-                mainRender.drawScreen(
-                    w, h, aspectRatioMode, streamRotation,
-                    isStreamVerticalFlip, isStreamHorizontalFlip,
-                    ViewPort(customScaleX, customScaleY)
-                )
+                mainRender.drawScreen(w, h, aspectRatioMode, streamRotation, isStreamVerticalFlip, isStreamHorizontalFlip, null)
                 surfaceManagerEncoderRecord.swapBuffer()
             }
         }
-
         if (takePhotoCallback != null && surfaceManagerPhoto.isReady && mainRender.isReady()) {
             if (surfaceManagerPhoto.makeCurrent()) {
-                mainRender.drawScreen(
-                    encoderWidth, encoderHeight, aspectRatioMode, streamRotation,
-                    isStreamVerticalFlip, isStreamHorizontalFlip,
-                    ViewPort(customScaleX, customScaleY)
-                )
+                mainRender.drawScreen(encoderWidth, encoderHeight, aspectRatioMode, streamRotation, isStreamVerticalFlip, isStreamHorizontalFlip, null)
                 takePhotoCallback?.onTakePhoto(GlUtil.getBitmap(encoderWidth, encoderHeight))
                 takePhotoCallback = null
                 surfaceManagerPhoto.swapBuffer()
@@ -360,7 +346,9 @@ open class OpenGlView : SurfaceView, GlInterface, SurfaceTexture.OnFrameAvailabl
         }
     }
 
-    override fun surfaceCreated(holder: SurfaceHolder) {}
+    override fun surfaceCreated(holder: SurfaceHolder) {
+    }
+
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
         this.previewWidth = width
         this.previewHeight = height
